@@ -8,16 +8,21 @@ namespace Pong
         static void Main(string[] args)
         {
             // initialize variables
-            String optionRegex = "-[a-zA-Z]";
-            List<String> targets = new List<String> ();
-            List<String> options = new List<String> ();
+            String switchRegex = "(-|\\/)[b|D|B|\\?]"; // detect if arg is a valid switch
+            List<String> targets = new List<String> (); // command line ip / hostname
+            List<String> switches = new List<String> (); // command line switches
+            List<long> roundTripTimes = new List<long> (); // list of rtt in ms for succesful pings
+            int count = 0; // number of ping attempts
+            int success = 0; // number of succesful pings
+            bool loop = true; // break the while loop
+            Ping pong = new Ping();
 
             // validates args
             foreach (String arg in args)
             {
-                if (Regex.IsMatch(arg, optionRegex))
+                if (Regex.IsMatch(arg, switchRegex))
                 {
-                    options.Add(arg);
+                    switches.Add(arg);
                 }
                 else 
                 {
@@ -25,34 +30,90 @@ namespace Pong
                 }
             }
 
-            // validate that only one hostname / ip was entered
+            // help
+            if (switches.Contains("/?") || switches.Contains("-?") || args.Length == 0)
+            {
+                Console.WriteLine("Usage: [-b][-B][-D] target\n");
+                Console.WriteLine("Options:");
+                Console.WriteLine("    -b        Play a console beep when a packet is received.");
+                Console.WriteLine("    -B        Reverse of -b. Play a console beep when a packet is not recieved.");
+                Console.WriteLine("    -D        Print timestamp at the start of each line.");
+                Environment.Exit(0);
+            }
+
+            // only one target specified
             if (targets.Count != 1)
             {
                 Console.WriteLine("Invalid parameters.");
                 Environment.Exit(1);
             }
 
-            // ping something
-            Ping pong = new Ping();
-            //TODO allow for some standard PingOptions options = new PingOptions();
+            // print ping stats to console on exit
+            Console.CancelKeyPress += delegate // write ping stats to console on exit
+            {
+                if (success == 0) // no succesful pings
+                {
+                    Console.WriteLine($"--- {targets[0]} ping statistics ---");
+                    Console.WriteLine($"{count} packets sent, 0 recieved, 100% packet loss");
 
-            Console.WriteLine($"Pinging {targets[0]} with 32 bytes of data:");
-            while (true)
+                }
+                if (success > 0)
+                {
+                    Double loss = 100 - (((double)success/(double)count) * 100);
+                    roundTripTimes.Sort();
+                    long min = roundTripTimes[0];
+                    long max = roundTripTimes.Last();
+                    long avg = roundTripTimes.Sum()/roundTripTimes.Count;
+
+                    Console.WriteLine($"--- {targets[0]} ping statistics ---");
+                    Console.WriteLine($"{count} packets sent, {success} recieved, {(int)loss}% packet loss");
+                    Console.WriteLine($"round trip time: min {(int)min}ms, max {(int)max}ms, avg {(int)avg}ms");
+                }
+            };
+
+            // ping
+            while (loop)
             {
                 try
                 {
                     var reply = pong.Send(targets[0]);
+                    // display message on first run
+                    if (count == 0)
+                    {
+                        Console.WriteLine($"Pinging {targets[0]} with 32 bytes of data:");
+                    }
+
+                    //
                     if (reply.Status == IPStatus.Success)
                     {
+                        if (switches.Contains("-D"))
+                        {
+                            DateTime timestamp = DateTime.Now;
+                            Console.Write($"[{timestamp}] ");
+                        }
                         Console.WriteLine($"{reply.Buffer.Length} bytes from {reply.Address}: ttl={reply.Options.Ttl} time={reply.RoundtripTime}ms");
-                        if (options.Contains("-b"))
+                        if (switches.Contains("-b"))
                         {
                             Console.Beep();
                         }
+                        roundTripTimes.Add(reply.RoundtripTime);
+                        count++;
+                        success++;
                     }
-                    else if (reply.Status == IPStatus.DestinationHostUnreachable)
+                    else
                     {
-                        Console.WriteLine($"From {reply.Address}: Destination host unreachable.");
+                        if (switches.Contains("-D"))
+                        {
+                            DateTime timestamp = DateTime.Now;
+                            Console.Write($"[{timestamp}] ");
+                        }
+                        String spaced  = Regex.Replace(reply.Status.ToString(), @"([a-z])([A-Z])", "$1 $2");
+                        Console.WriteLine($"{reply.Address}: {spaced}");
+                        if (switches.Contains("-B"))
+                        {
+                            Console.Beep();
+                        }
+                        count++;
                     }
                     Thread.Sleep(1000);
                     }
