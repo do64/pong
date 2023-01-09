@@ -51,7 +51,7 @@ namespace Pong
             }
 
             // print ping stats to console on exit
-            Console.CancelKeyPress += delegate // write ping stats to console on exit
+            Console.CancelKeyPress += delegate
             {
                 if (success == 0) // no succesful pings
                 {
@@ -85,7 +85,6 @@ namespace Pong
                         Console.WriteLine($"Pinging {targets[0]}:");
                     }
 
-                    //
                     if (reply.Status == IPStatus.Success)
                     {
                         if (switches.Contains("-D"))
