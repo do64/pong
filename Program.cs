@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Text;
+using System.Text.RegularExpressions;
 using System.Net.NetworkInformation;
 
 namespace Pong
@@ -9,6 +10,7 @@ namespace Pong
         {
             // initialize variables
             String switchRegex = "(-|\\/)[b|D|B|\\?]"; // detect if arg is a valid switch
+            String hostNotKnownRegex = "(No such host is known.|Name or service not known)";
             List<String> targets = new List<String> (); // command line ip / hostname
             List<String> switches = new List<String> (); // command line switches
             List<long> roundTripTimes = new List<long> (); // list of rtt in ms for succesful pings
@@ -35,8 +37,8 @@ namespace Pong
             {
                 Console.WriteLine("Usage: [-b][-B][-D] target\n");
                 Console.WriteLine("Options:");
-                Console.WriteLine("    -b        Play a console beep when a packet is received.");
-                Console.WriteLine("    -B        Reverse of -b. Play a console beep when a packet is not recieved.");
+                Console.WriteLine("    -b        Play a console beep when a ping is succesful.");
+                Console.WriteLine("    -B        Reverse of -b. Play a console beep when a ping is not succesful.");
                 Console.WriteLine("    -D        Print timestamp at the start of each line.");
                 Environment.Exit(0);
             }
@@ -80,7 +82,7 @@ namespace Pong
                     // display message on first run
                     if (count == 0)
                     {
-                        Console.WriteLine($"Pinging {targets[0]} with 32 bytes of data:");
+                        Console.WriteLine($"Pinging {targets[0]}:");
                     }
 
                     //
@@ -91,7 +93,7 @@ namespace Pong
                             DateTime timestamp = DateTime.Now;
                             Console.Write($"[{timestamp}] ");
                         }
-                        Console.WriteLine($"{reply.Buffer.Length} bytes from {reply.Address}: ttl={reply.Options.Ttl} time={reply.RoundtripTime}ms");
+                        Console.WriteLine($"{reply.Address}: Success time={reply.RoundtripTime}ms");
                         if (switches.Contains("-b"))
                         {
                             Console.Beep();
@@ -119,11 +121,11 @@ namespace Pong
                     }
                 catch (Exception exception)
                 {
-                    if(exception.InnerException.Message == "No such host is known.")
+                    if (Regex.IsMatch(exception.ToString(), hostNotKnownRegex))
                     {
                         Console.WriteLine($"Could not find host {targets[0]}. Please check the name and try again.");
                     }
-                    else 
+                    else
                     {
                         Console.WriteLine("Something went wrong.");
                     }
