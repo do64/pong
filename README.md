@@ -7,7 +7,6 @@ Functionality will continue to be added as time permits.
 
 ### How to use pong
 You probably want to place the pong binary somewhere in your $PATH so you can use it easily from the command line.
-Binaries are available on the releases page or you can compile yourself from source.
 
 ```
 Options:
